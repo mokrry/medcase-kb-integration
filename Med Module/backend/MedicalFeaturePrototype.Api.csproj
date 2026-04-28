@@ -1,0 +1,142 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>fe5e71fc-8dfc-47a8-95ba-bb8a1254b9a9</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\frontend\.env">
+      <Link>frontend\.env</Link>
+    </Content>
+    <Content Include="..\frontend\.env.development">
+      <Link>frontend\.env.development</Link>
+    </Content>
+    <Content Include="..\frontend\index.html">
+      <Link>frontend\index.html</Link>
+    </Content>
+    <Content Include="..\frontend\package.json">
+      <Link>frontend\package.json</Link>
+    </Content>
+    <Content Include="..\frontend\src\styles\app.css">
+      <Link>frontend\src\styles\app.css</Link>
+    </Content>
+    <Content Include="..\frontend\src\styles\index.css">
+      <Link>frontend\src\styles\index.css</Link>
+    </Content>
+    <Content Include="..\frontend\tsconfig.json">
+      <Link>frontend\tsconfig.json</Link>
+    </Content>
+    <Content Include="..\frontend\tsconfig.node.json">
+      <Link>frontend\tsconfig.node.json</Link>
+    </Content>
+    <Content Include="..\frontend\tsconfig.node.tsbuildinfo">
+      <Link>frontend\tsconfig.node.tsbuildinfo</Link>
+    </Content>
+    <Content Include="..\frontend\tsconfig.tsbuildinfo">
+      <Link>frontend\tsconfig.tsbuildinfo</Link>
+    </Content>
+    <Content Include="..\frontend\vite.config.js">
+      <Link>frontend\vite.config.js</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="..\frontend\src\api\client.ts">
+      <Link>frontend\src\api\client.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\api\patientsApi.ts">
+      <Link>frontend\src\api\patientsApi.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\App.tsx">
+      <Link>frontend\src\App.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Analysis\AnalysisResultTable.tsx">
+      <Link>frontend\src\components\Analysis\AnalysisResultTable.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Analysis\AnalysisSummary.tsx">
+      <Link>frontend\src\components\Analysis\AnalysisSummary.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Analysis\StatusBadge.tsx">
+      <Link>frontend\src\components\Analysis\StatusBadge.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Common\EmptyState.tsx">
+      <Link>frontend\src\components\Common\EmptyState.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Common\ErrorMessage.tsx">
+      <Link>frontend\src\components\Common\ErrorMessage.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Common\Loading.tsx">
+      <Link>frontend\src\components\Common\Loading.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Layout\AppLayout.tsx">
+      <Link>frontend\src\components\Layout\AppLayout.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Layout\Header.tsx">
+      <Link>frontend\src\components\Layout\Header.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Patient\FeatureSelector.tsx">
+      <Link>frontend\src\components\Patient\FeatureSelector.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Patient\PatientCard.tsx">
+      <Link>frontend\src\components\Patient\PatientCard.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\components\Patient\PatientTextBlock.tsx">
+      <Link>frontend\src\components\Patient\PatientTextBlock.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\hooks\useAnalysis.ts">
+      <Link>frontend\src\hooks\useAnalysis.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\hooks\usePatientDetails.ts">
+      <Link>frontend\src\hooks\usePatientDetails.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\hooks\usePatients.ts">
+      <Link>frontend\src\hooks\usePatients.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\main.tsx">
+      <Link>frontend\src\main.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\pages\AnalysisPage.tsx">
+      <Link>frontend\src\pages\AnalysisPage.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\pages\HomePage.tsx">
+      <Link>frontend\src\pages\HomePage.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\pages\PatientDetailsPage.tsx">
+      <Link>frontend\src\pages\PatientDetailsPage.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\pages\PatientsPage.tsx">
+      <Link>frontend\src\pages\PatientsPage.tsx</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\types\analysis.ts">
+      <Link>frontend\src\types\analysis.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\types\feature.ts">
+      <Link>frontend\src\types\feature.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\types\patient.ts">
+      <Link>frontend\src\types\patient.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\utils\statusHelpers.ts">
+      <Link>frontend\src\utils\statusHelpers.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\utils\textHelpers.ts">
+      <Link>frontend\src\utils\textHelpers.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\src\vite-env.d.ts">
+      <Link>frontend\src\vite-env.d.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\vite.config.d.ts">
+      <Link>frontend\vite.config.d.ts</Link>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="..\frontend\vite.config.ts">
+      <Link>frontend\vite.config.ts</Link>
+    </TypeScriptCompile>
+  </ItemGroup>
+</Project>

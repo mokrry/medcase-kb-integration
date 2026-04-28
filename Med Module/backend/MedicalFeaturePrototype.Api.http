@@ -1,0 +1,30 @@
+@MedicalFeaturePrototype.Api_HostAddress = http://localhost:5274
+
+GET {{MedicalFeaturePrototype.Api_HostAddress}}/api/health
+Accept: application/json
+
+###
+
+GET {{MedicalFeaturePrototype.Api_HostAddress}}/api/patients?page=1&pageSize=10
+Accept: application/json
+
+###
+
+GET {{MedicalFeaturePrototype.Api_HostAddress}}/api/patients/0
+Accept: application/json
+
+###
+
+GET {{MedicalFeaturePrototype.Api_HostAddress}}/api/patients/features?includeComplaintsFeatures=true&includeAnamnesisFeatures=true
+Accept: application/json
+
+###
+
+POST {{MedicalFeaturePrototype.Api_HostAddress}}/api/patients/analyze
+Content-Type: application/json
+
+{
+  "patientId": 0,
+  "includeComplaintsFeatures": true,
+  "includeAnamnesisFeatures": true
+}

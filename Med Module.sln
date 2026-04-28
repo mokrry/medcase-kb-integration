@@ -1,0 +1,28 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MedicalFeaturePrototype.Api", "Med Module\backend\MedicalFeaturePrototype.Api.csproj", "{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "frontend", "frontend", "{C5A4D5F4-A730-4F4A-A7F7-C2DAA9D32883}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{E0A4A56D-D0EA-4A2C-8C48-6D3E7CBAF43E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{7B3A1D56-4EBF-4B2A-B62E-428B5F7C8E91} = {E0A4A56D-D0EA-4A2C-8C48-6D3E7CBAF43E}
+	EndGlobalSection
+EndGlobal
