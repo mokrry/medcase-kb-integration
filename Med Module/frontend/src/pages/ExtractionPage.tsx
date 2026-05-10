@@ -1,41 +1,113 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { EmptyState } from '../components/Common/EmptyState';
 import { useAppState } from '../context/AppStateContext';
-import { runPrompt } from '../api/promptApi';
-import type { LlmProvider, PromptRunBundle } from '../types/prompt';
+import { runPrompt, solveSymptoms } from '../api/promptApi';
+import type {
+  KnowledgeBaseSolver,
+  LlmProvider,
+  PromptRunBundle,
+  SymptomEvidence
+} from '../types/prompt';
 import { logToClientConsole } from '../utils/devConsoleLogger';
 
-const PROVIDERS: LlmProvider[] = ['gemini', 'chatgpt', 'gigachat'];
+const PROVIDERS: LlmProvider[] = ['gemini', 'chatgpt'];
 
 export function ExtractionPage() {
-  const { latestRun, setLatestRun } = useAppState();
-  const [complaintsText, setComplaintsText] = useState('');
-  const [processing, setProcessing] = useState(false);
+  const {
+    latestRun,
+    setLatestRun,
+    latestDiagnosisSolver,
+    setLatestDiagnosisSolver,
+    complaintsDraft,
+    setComplaintsDraft,
+    isExtractionProcessing,
+    setIsExtractionProcessing,
+    excludedSymptoms,
+    setExcludedSymptoms,
+    addedSymptoms,
+    setAddedSymptoms
+  } = useAppState();
+  const [complaintsText, setComplaintsText] = useState(
+    complaintsDraft || latestRun?.promptBuild?.sourceComplaintsText || latestRun?.promptBuild?.complaintsText || ''
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [activeRun, setActiveRun] = useState<PromptRunBundle | null>(latestRun);
+  const [hoveredEvidence, setHoveredEvidence] = useState<SymptomEvidence | null>(null);
+  const [showSymptomSearch, setShowSymptomSearch] = useState(false);
+  const [symptomSearch, setSymptomSearch] = useState('');
+  const [diagnosisLoading, setDiagnosisLoading] = useState(false);
+  const [editingSubmittedText, setEditingSubmittedText] = useState(false);
+  const processing = isExtractionProcessing;
+
+  useEffect(() => {
+    if (complaintsText) {
+      return;
+    }
+
+    const restoredText =
+      complaintsDraft ||
+      latestRun?.promptBuild?.sourceComplaintsText ||
+      latestRun?.promptBuild?.complaintsText ||
+      '';
+
+    if (restoredText) {
+      setComplaintsText(restoredText);
+    }
+  }, [complaintsDraft, complaintsText, latestRun]);
 
   function resetForm() {
     setComplaintsText('');
+    setComplaintsDraft('');
     setErrors([]);
     setActiveRun(null);
     setLatestRun(null);
+    setExcludedSymptoms([]);
+    setAddedSymptoms([]);
+    setShowSymptomSearch(false);
+    setSymptomSearch('');
+    setLatestDiagnosisSolver(null);
+    setEditingSubmittedText(false);
+  }
+
+  function handleComplaintsChange(value: string) {
+    if (activeRun || latestRun) {
+      const shouldReset = window.confirm(
+        'Если изменить медицинский текст, найденные симптомы и диагноз будут сброшены. Продолжить?'
+      );
+
+      if (!shouldReset) {
+        return;
+      }
+
+      setActiveRun(null);
+      setLatestRun(null);
+      setExcludedSymptoms([]);
+      setAddedSymptoms([]);
+      setShowSymptomSearch(false);
+      setSymptomSearch('');
+      setLatestDiagnosisSolver(null);
+      setHoveredEvidence(null);
+    }
+
+    setComplaintsText(value);
+    setComplaintsDraft(value);
+    setEditingSubmittedText(true);
   }
 
   async function handleSubmit() {
     const normalizedComplaints = complaintsText.trim();
     if (!normalizedComplaints) {
-      setErrors(['Введите жалобы пациента']);
+      setErrors(['Введите медицинский текст']);
       return;
     }
 
-    setProcessing(true);
+    setIsExtractionProcessing(true);
     setErrors([]);
 
     void logToClientConsole({
       level: 'info',
-      scope: 'PromptBuilder',
-      message: 'Voting request received',
+      scope: 'Extraction',
+      message: 'Extraction request received',
       data: {
         complaintsLength: normalizedComplaints.length,
         providers: PROVIDERS
@@ -49,90 +121,146 @@ export function ExtractionPage() {
         const failedMessages = bundle.results
           .map((item) => item.error)
           .filter((item): item is string => Boolean(item));
-        setErrors(failedMessages.length > 0 ? failedMessages : ['Все запросы к LLM завершились ошибкой']);
+        setErrors(failedMessages.length > 0 ? failedMessages : ['Обработка завершилась ошибкой']);
         return;
       }
 
       setActiveRun(bundle);
       setLatestRun(bundle);
-
-      void logToClientConsole({
-        level: 'info',
-        scope: 'PromptBuilder',
-        message: 'Voting response received',
-        data: {
-          requestId: bundle.promptBuild.requestId,
-          voting: bundle.voting,
-          results: bundle.results.map((item) => ({
-            provider: item.provider,
-            model: item.model,
-            error: item.error,
-            score: item.review.score
-          }))
-        }
-      });
+      setExcludedSymptoms([]);
+      setAddedSymptoms([]);
+      setShowSymptomSearch(false);
+      setSymptomSearch('');
+      setLatestDiagnosisSolver(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось отправить промпт в LLM';
+      const message = error instanceof Error ? error.message : 'Не удалось обработать текст';
       setErrors([message]);
     } finally {
-      setProcessing(false);
+      setIsExtractionProcessing(false);
     }
   }
 
+  async function handleSolveDiagnosis() {
+    const runSnapshot = activeRun ?? latestRun;
+    if (!runSnapshot) {
+      return;
+    }
+
+    const selectedSymptoms = getSelectedSymptoms(runSnapshot, excludedSymptoms, addedSymptoms);
+    if (selectedSymptoms.length === 0) {
+      setErrors(['Оставьте хотя бы один симптом для постановки диагноза']);
+      return;
+    }
+
+    setDiagnosisLoading(true);
+    setErrors([]);
+
+    try {
+      const solver = await solveSymptoms(
+        runSnapshot.voting?.preparedComplaintsText || runSnapshot.preparation?.content || submittedText,
+        selectedSymptoms
+      );
+
+      if (!solver.isSuccess) {
+        setLatestDiagnosisSolver(null);
+        setErrors([formatSolverError(solver.error)]);
+        return;
+      }
+
+      setLatestDiagnosisSolver(solver);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось получить диагноз';
+      setErrors([message]);
+    } finally {
+      setDiagnosisLoading(false);
+    }
+  }
+
+  function excludeSymptom(symptom: string) {
+    setExcludedSymptoms(Array.from(new Set([...excludedSymptoms, symptom])));
+    setAddedSymptoms(addedSymptoms.filter((item) => item !== symptom));
+    setHoveredEvidence(null);
+    setLatestDiagnosisSolver(null);
+  }
+
+  function addSymptom(symptom: string) {
+    setAddedSymptoms(addedSymptoms.includes(symptom) ? addedSymptoms : [...addedSymptoms, symptom]);
+    setExcludedSymptoms(excludedSymptoms.filter((item) => item !== symptom));
+    setSymptomSearch('');
+    setShowSymptomSearch(false);
+    setLatestDiagnosisSolver(null);
+  }
+
   const run = activeRun ?? latestRun;
-  const finalAnswer = run ? formatVotingAnswer(run.voting.finalSymptoms) : '';
+  const submittedText = run?.promptBuild?.sourceComplaintsText || run?.promptBuild?.complaintsText || '';
+  const evidenceItems = run?.evidenceVerification?.symptoms ?? [];
+  const fallbackSymptoms = run?.voting?.finalSymptoms ?? [];
+  const whitelistSymptoms = run?.promptBuild?.symptoms?.map((item) => item.name).filter(Boolean) ?? [];
+  const excludedSymptomsSet = new Set(excludedSymptoms);
+  const visibleEvidenceItems = evidenceItems.filter((item) => !excludedSymptomsSet.has(item.name));
+  const visibleFallbackSymptoms = fallbackSymptoms.filter((item) => !excludedSymptomsSet.has(item));
+  const selectedSymptoms = run ? getSelectedSymptoms(run, excludedSymptomsSet, addedSymptoms) : [];
+  const selectedSymptomsCount = selectedSymptoms.length;
+  const symptomSuggestions = getSymptomSuggestions(whitelistSymptoms, selectedSymptoms, symptomSearch);
+  const solverDiagnoses = latestDiagnosisSolver ? parseSolverDiagnoses(latestDiagnosisSolver.responseJson) : [];
+  const primaryDiagnosis = solverDiagnoses[0];
 
   return (
     <section className="grid gap-24">
       <div className="page-heading">
         <h2>Извлечение</h2>
-        <p>Backend собирает промпт по базе знаний, сам вызывает модели, проверяет ответы по правилам и строит итог голосования.</p>
+        <p>Введите медицинский текст, чтобы получить извлечённые симптомы и предполагаемый диагноз.</p>
       </div>
 
       <div className="workspace-grid">
         <article className="panel panel--form">
           <div className="panel__header">
             <h3>Входные данные</h3>
-            <p>Введите жалобы пациента. Один и тот же сценарий будет проверен сразу на трёх LLM.</p>
           </div>
 
           <label className="form-field">
-            <span className="form-field__label">Жалобы пациента</span>
-            <textarea
-              className="textarea"
-              rows={10}
-              value={complaintsText}
-              onChange={(event) => setComplaintsText(event.target.value)}
-              placeholder="Например: слабость, температура 38.5, кашель с мокротой, одышка при нагрузке..."
+            <span className="form-field__label">Медицинский текст</span>
+            {run && (!editingSubmittedText || hoveredEvidence) ? (
+              <div
+                className="textarea textarea--highlighted-source"
+                role="textbox"
+                tabIndex={0}
+                onMouseEnter={() => setEditingSubmittedText(true)}
+                onFocus={() => setEditingSubmittedText(true)}
+              >
+                {renderHighlightedText(submittedText, hoveredEvidence)}
+              </div>
+            ) : (
+              <textarea
+                className="textarea"
+                rows={12}
+                value={complaintsText}
+                disabled={isExtractionProcessing}
+                onChange={(event) => handleComplaintsChange(event.target.value)}
+              onBlur={() => {
+                if (run) {
+                  setEditingSubmittedText(false);
+                }
+              }}
+              placeholder="Например: лихорадка до 38.5, кашель с мокротой, одышка при нагрузке..."
             />
-            <span className="form-field__hint">Вставьте жалобы пациента в свободном текстовом виде.</span>
+            )}
+            <span className="form-field__hint">Вставьте жалобы или фрагмент истории болезни.</span>
           </label>
 
-          <div className="meta-grid">
-            <div className="meta-card">
-              <span className="summary-card__label">LLM провайдеры</span>
-              <strong>Gemini, ChatGPT, GigaChat</strong>
-            </div>
-            <div className="meta-card">
-              <span className="summary-card__label">Источник симптомов</span>
-              <strong>Локальная база знаний</strong>
-            </div>
-          </div>
-
           <div className="button-row">
-            <button className="button button--primary" type="button" disabled={processing} onClick={handleSubmit}>
-              {processing ? 'Собираю промпт и запускаю голосование...' : 'Отправить во все LLM'}
+            <button className="button button--primary" type="button" disabled={isExtractionProcessing} onClick={handleSubmit}>
+              {processing ? 'Обрабатываю...' : 'Получить результат'}
             </button>
             <button className="button button--secondary" type="button" onClick={resetForm}>
-              Сбросить форму
+              Сбросить
             </button>
           </div>
         </article>
 
         <article className="panel">
           <div className="panel__header">
-            <h3>Результат обработки</h3>
-            <p>Здесь показываются собранный промпт, ответы моделей, проверка правил и итог голосования.</p>
+            <h3>Результат</h3>
           </div>
 
           {errors.length > 0 ? (
@@ -145,92 +273,147 @@ export function ExtractionPage() {
 
           {run ? (
             <div className="grid gap-16">
-              <div className="meta-grid">
-                <div className="meta-card">
-                  <span className="summary-card__label">Request ID</span>
-                  <strong>{run.promptBuild.requestId}</strong>
-                </div>
-                <div className="meta-card">
-                  <span className="summary-card__label">Прочитано симптомов</span>
-                  <strong>{run.promptBuild.filledSymptoms} / {run.promptBuild.totalSymptoms}</strong>
-                </div>
-                <div className="meta-card">
-                  <span className="summary-card__label">Успешных ответов</span>
-                  <strong>{run.results.filter((item) => !item.error).length} / {run.results.length}</strong>
-                </div>
-                <div className="meta-card">
-                  <span className="summary-card__label">Итог голосования</span>
-                  <strong>{run.voting.finalSymptoms.length}</strong>
-                </div>
-              </div>
-
-              {run.promptBuild.warnings.length > 0 ? (
-                <div className="notice notice--warning">
-                  {run.promptBuild.warnings.map((warning) => (
-                    <p key={warning}>{warning}</p>
-                  ))}
-                </div>
-              ) : null}
-
-              <article className="panel panel--embedded">
-                <h3>Сформированный промпт</h3>
-                <pre className="preformatted">{run.promptBuild.prompt}</pre>
+              <article className="panel panel--embedded panel--deprecated-text-copy">
+                <h3>Отправленный текст</h3>
               </article>
 
-              <article className="panel panel--embedded">
-                <h3>Итоговый ответ</h3>
-                <pre className="preformatted">{finalAnswer}</pre>
-              </article>
+              <article className="panel panel--embedded panel--symptoms-result">
+                <h3>Симптомы</h3>
+                <div className="grid gap-16">
+                  <div>
+                    <h4>Текст с подсветкой подтверждений</h4>
+                  </div>
 
-              {run.results.map((result) => (
-                <article className="panel panel--embedded" key={result.provider}>
-                  <h3>{formatProviderName(result.provider)} {result.model ? `/ ${result.model}` : ''}</h3>
-                  {result.error ? (
-                    <div className="notice notice--error">
-                      <p>{result.error}</p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-16">
-                      <pre className="preformatted">{result.content || 'LLM вернула пустой ответ.'}</pre>
-                      <div className="meta-grid">
-                        <div className="meta-card">
-                          <span className="summary-card__label">Score</span>
-                          <strong>{result.review.score}</strong>
+                  <div className="evidence-list">
+                    {evidenceItems.length > 0 ? (
+                      visibleEvidenceItems.map((item) => (
+                        <div className="symptom-review-row" key={item.name}>
+                          <button
+                            className="symptom-remove-button"
+                            type="button"
+                            aria-label={`Исключить симптом ${item.name}`}
+                            title="Исключить симптом"
+                            onClick={() => excludeSymptom(item.name)}
+                          >
+                            ×
+                          </button>
+                          <button
+                            className="evidence-item"
+                            type="button"
+                            onMouseEnter={() => setHoveredEvidence(item)}
+                            onMouseLeave={() => setHoveredEvidence(null)}
+                            onFocus={() => setHoveredEvidence(item)}
+                            onBlur={() => setHoveredEvidence(null)}
+                          >
+                            <span>{item.name}</span>
+                            <strong className={`evidence-badge evidence-badge--${item.verificationStatus}`}>
+                              {item.verificationStatus === 'verified' ? 'Проверено' : 'Требует ручной проверки'}
+                            </strong>
+                            {item.evidence ? <small>{item.evidence}</small> : <small>Цитата не найдена.</small>}
+                          </button>
                         </div>
-                        <div className="meta-card">
-                          <span className="summary-card__label">Соответствие</span>
-                          <strong>{result.review.isCompliant ? 'Да' : 'Нет'}</strong>
+                      ))
+                    ) : (
+                      <pre className="preformatted">{formatSymptoms(visibleFallbackSymptoms)}</pre>
+                    )}
+                    {addedSymptoms.map((symptom) => (
+                      <div className="symptom-review-row" key={`manual-${symptom}`}>
+                        <button
+                          className="symptom-remove-button"
+                          type="button"
+                          aria-label={`Исключить симптом ${symptom}`}
+                          title="Исключить симптом"
+                          onClick={() => excludeSymptom(symptom)}
+                        >
+                          ×
+                        </button>
+                        <button className="evidence-item" type="button">
+                          <span>{symptom}</span>
+                          <strong className="evidence-badge evidence-badge--manual">
+                            Добавлено вручную
+                          </strong>
+                          <small>Симптом добавлен пользователем из whitelist.</small>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="manual-symptom-block">
+                    <button
+                      className="symptom-add-button"
+                      type="button"
+                      aria-label="Добавить симптом"
+                      title="Добавить симптом"
+                      onClick={() => setShowSymptomSearch((value) => !value)}
+                    >
+                      +
+                    </button>
+                    {showSymptomSearch ? (
+                      <div className="symptom-search">
+                        <input
+                          className="input"
+                          value={symptomSearch}
+                          onChange={(event) => setSymptomSearch(event.target.value)}
+                          placeholder="Начните вводить название симптома..."
+                          autoFocus
+                        />
+                        <div className="symptom-suggestions">
+                          {symptomSuggestions.length > 0 ? (
+                            symptomSuggestions.map((symptom) => (
+                              <button
+                                className="symptom-suggestion"
+                                key={symptom}
+                                type="button"
+                                onClick={() => addSymptom(symptom)}
+                              >
+                                {symptom}
+                              </button>
+                            ))
+                          ) : (
+                            <span className="muted">Ничего не найдено.</span>
+                          )}
                         </div>
                       </div>
-                      {result.review.issues.length > 0 ? (
-                        <div className="notice notice--error">
-                          {result.review.issues.map((issue) => (
-                            <p key={issue}>{issue}</p>
-                          ))}
-                        </div>
-                      ) : null}
-                      {result.review.warnings.length > 0 ? (
-                        <div className="notice notice--warning">
-                          {result.review.warnings.map((warning) => (
-                            <p key={warning}>{warning}</p>
-                          ))}
+                    ) : null}
+                  </div>
+                  <div className="button-row">
+                    <button
+                      className="button button--primary"
+                      type="button"
+                      disabled={diagnosisLoading || selectedSymptomsCount === 0}
+                      onClick={handleSolveDiagnosis}
+                    >
+                      {diagnosisLoading ? 'Получаю диагноз...' : 'Узнать диагноз'}
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              {latestDiagnosisSolver ? (
+                <article className="panel panel--embedded">
+                  <h3>Диагноз</h3>
+                  {primaryDiagnosis ? (
+                    <div className="grid gap-16">
+                      <div>
+                        <h4>Наиболее вероятный диагноз</h4>
+                        <pre className="preformatted">{formatDiagnosis(primaryDiagnosis)}</pre>
+                      </div>
+                      {solverDiagnoses.length > 1 ? (
+                        <div>
+                          <h4>Все возможные диагнозы</h4>
+                          <pre className="preformatted">{solverDiagnoses.map(formatDiagnosis).join('\n\n')}</pre>
                         </div>
                       ) : null}
                     </div>
+                  ) : (
+                    <pre className="preformatted">Диагноз не найден.</pre>
                   )}
                 </article>
-              ))}
-
-              <div className="button-row">
-                <Link className="button button--secondary" to="/reliability">
-                  Перейти к проверке
-                </Link>
-              </div>
+              ) : null}
             </div>
           ) : (
             <EmptyState
-              title="Промпт еще не отправлен"
-              description="После отправки жалоб здесь появятся собранный промпт, ответы моделей и итог голосования."
+              title="Результат ещё не сформирован"
+              description="После обработки здесь появятся отправленный текст, симптомы и диагноз."
             />
           )}
         </article>
@@ -239,19 +422,153 @@ export function ExtractionPage() {
   );
 }
 
-function formatProviderName(provider: LlmProvider) {
-  switch (provider) {
-    case 'gemini':
-      return 'Gemini';
-    case 'chatgpt':
-      return 'ChatGPT';
-    case 'gigachat':
-      return 'GigaChat';
+function renderHighlightedText(text: string, evidence: SymptomEvidence | null) {
+  if (!text) {
+    return 'Текст отсутствует.';
+  }
+
+  if (
+    !evidence ||
+    evidence.evidenceStart === null ||
+    evidence.evidenceEnd === null ||
+    evidence.evidenceStart < 0 ||
+    evidence.evidenceEnd <= evidence.evidenceStart ||
+    evidence.evidenceEnd > text.length
+  ) {
+    const fallbackRange = findEvidenceRange(text, evidence?.evidence ?? '');
+    if (!fallbackRange) {
+      return text;
+    }
+
+    return (
+      <>
+        {text.slice(0, fallbackRange.start)}
+        <mark className={`evidence-highlight evidence-highlight--${evidence?.verificationStatus ?? 'needsReview'}`}>
+          {text.slice(fallbackRange.start, fallbackRange.end)}
+        </mark>
+        {text.slice(fallbackRange.end)}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {text.slice(0, evidence.evidenceStart)}
+      <mark className={`evidence-highlight evidence-highlight--${evidence.verificationStatus}`}>
+        {text.slice(evidence.evidenceStart, evidence.evidenceEnd)}
+      </mark>
+      {text.slice(evidence.evidenceEnd)}
+    </>
+  );
+}
+
+function getSelectedSymptoms(run: PromptRunBundle, excludedSymptoms: string[] | Set<string>, addedSymptoms: string[]) {
+  const excludedSymptomsSet = excludedSymptoms instanceof Set ? excludedSymptoms : new Set(excludedSymptoms);
+  const extractedSymptoms = (run.voting?.finalSymptoms ?? []).filter((symptom) => !excludedSymptomsSet.has(symptom));
+  return [...extractedSymptoms, ...addedSymptoms]
+    .filter((symptom, index, symptoms) => symptoms.indexOf(symptom) === index);
+}
+
+function getSymptomSuggestions(whitelistSymptoms: string[], selectedSymptoms: string[], query: string) {
+  const normalizedQuery = normalizeSearchValue(query);
+  if (!normalizedQuery) {
+    return whitelistSymptoms
+      .filter((symptom) => !selectedSymptoms.includes(symptom))
+      .slice(0, 8);
+  }
+
+  return whitelistSymptoms
+    .filter((symptom) => !selectedSymptoms.includes(symptom))
+    .filter((symptom) => normalizeSearchValue(symptom).includes(normalizedQuery))
+    .slice(0, 8);
+}
+
+function normalizeSearchValue(value: string) {
+  return value.toLowerCase().replace('ё', 'е').trim();
+}
+
+function findEvidenceRange(text: string, evidence: string) {
+  const normalizedEvidence = evidence.trim();
+  if (!normalizedEvidence) {
+    return null;
+  }
+
+  const index = text.toLowerCase().indexOf(normalizedEvidence.toLowerCase());
+  return index < 0
+    ? null
+    : {
+        start: index,
+        end: index + normalizedEvidence.length
+      };
+}
+
+function formatSymptoms(symptoms: string[]) {
+  return symptoms.length > 0 ? symptoms.join('\n') : 'Симптомы не найдены.';
+}
+
+function formatSolverError(error: string) {
+  if (!error.trim()) {
+    return 'Не удалось связаться с сервисом определения диагноза. Проверьте подключение к интернету и повторите запрос.';
+  }
+
+  const normalizedError = error.toLowerCase();
+  if (
+    normalizedError.includes('host') ||
+    normalizedError.includes('known') ||
+    normalizedError.includes('dns') ||
+    normalizedError.includes('connect') ||
+    normalizedError.includes('network') ||
+    normalizedError.includes('timed out') ||
+    normalizedError.includes('timeout') ||
+    normalizedError.includes('хост') ||
+    normalizedError.includes('соедин')
+  ) {
+    return 'Не удалось связаться с сервисом определения диагноза. Проверьте подключение к интернету и повторите запрос.';
+  }
+
+  return `Не удалось получить диагноз: ${error}`;
+}
+
+interface SolverDiagnosis {
+  id: number;
+  name: string;
+  description?: string;
+  explanatorySet?: Array<{ id: number; name: string; description?: string }>;
+}
+
+function parseSolverDiagnoses(content: string): SolverDiagnosis[] {
+  if (!content.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((item): item is SolverDiagnosis => {
+        if (!item || typeof item !== 'object') {
+          return false;
+        }
+
+        const candidate = item as Partial<SolverDiagnosis>;
+        return typeof candidate.id === 'number' && typeof candidate.name === 'string';
+      })
+      .sort((left, right) => (right.explanatorySet?.length ?? 0) - (left.explanatorySet?.length ?? 0));
+  } catch {
+    return [];
   }
 }
 
-function formatVotingAnswer(symptoms: string[]) {
-  return symptoms.length > 0
-    ? symptoms.join('\n')
-    : 'Ничего не найдено.';
+function formatDiagnosis(diagnosis: SolverDiagnosis) {
+  const parts = [`${diagnosis.name}${diagnosis.description ? ` (${diagnosis.description})` : ''}`];
+  const explanatorySet = diagnosis.explanatorySet ?? [];
+
+  if (explanatorySet.length > 0) {
+    parts.push(`Подтверждающие признаки: ${explanatorySet.map((item) => item.name).join(', ')}`);
+  }
+
+  return parts.join('\n');
 }

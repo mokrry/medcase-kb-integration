@@ -58,6 +58,17 @@
   border-radius: 999px;
 }
 
+.nav__button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nav__button:hover {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
 .nav__link.active {
   background: var(--primary-soft);
   color: var(--primary-dark);
@@ -140,6 +151,11 @@
   background: var(--panel-strong);
 }
 
+.panel--deprecated-text-copy,
+.panel--symptoms-result > .grid > div:first-child {
+  display: none;
+}
+
 .panel__header {
   display: grid;
   gap: 6px;
@@ -156,6 +172,14 @@
   grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.25fr);
   gap: 24px;
   align-items: start;
+}
+
+.panel--form {
+  position: sticky;
+  top: 112px;
+  align-self: start;
+  max-height: calc(100vh - 136px);
+  overflow: auto;
 }
 
 .quick-links-grid {
@@ -313,6 +337,17 @@
   margin-top: 16px;
 }
 
+.filter-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(150px, 0.8fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.filter-row .form-field + .form-field {
+  margin-top: 0;
+}
+
 .form-field__label {
   font-weight: 700;
   color: #234562;
@@ -337,7 +372,22 @@ input[type="file"] {
 
 .textarea {
   min-height: 160px;
+  height: 286px;
   resize: vertical;
+}
+
+.textarea:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.textarea--highlighted-source {
+  min-height: 286px;
+  height: 286px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  overflow: auto;
+  resize: none;
 }
 
 .chip-group,
@@ -448,6 +498,165 @@ input[type="file"] {
   padding: 16px;
 }
 
+.evidence-text {
+  line-height: 1.7;
+}
+
+.evidence-highlight {
+  color: #123b28;
+  border-radius: 6px;
+  padding: 2px 3px;
+}
+
+.evidence-highlight--verified {
+  background: #b9edcf;
+}
+
+.evidence-highlight--needsReview {
+  background: #ffe7a3;
+}
+
+.evidence-list {
+  display: grid;
+  gap: 10px;
+}
+
+.symptom-review-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.symptom-remove-button {
+  width: 38px;
+  min-height: 38px;
+  padding: 0;
+  color: #8e2f2f;
+  background: #fff4f4;
+  border: 1px solid #f0caca;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.symptom-remove-button:hover,
+.symptom-remove-button:focus {
+  background: #ffe9e9;
+  border-color: #dfaaa9;
+  outline: none;
+}
+
+.manual-symptom-block {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.symptom-add-button {
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  color: #166345;
+  background: #e4f5eb;
+  border: 1px solid #b9dcc9;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.symptom-add-button:hover,
+.symptom-add-button:focus {
+  background: #d8f0e3;
+  border-color: #98c8af;
+  outline: none;
+}
+
+.symptom-search {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 520px);
+}
+
+.symptom-suggestions {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.symptom-suggestion {
+  width: 100%;
+  padding: 9px 10px;
+  color: #17324b;
+  text-align: left;
+  background: #f7fafc;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.symptom-suggestion:hover,
+.symptom-suggestion:focus {
+  background: #edf4f9;
+  border-color: #c8d8e3;
+  outline: none;
+}
+
+.evidence-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  width: 100%;
+  padding: 12px 14px;
+  color: #17324b;
+  text-align: left;
+  background: #ffffff;
+  border: 1px solid #d5e1ea;
+  border-radius: 12px;
+}
+
+.evidence-item:hover,
+.evidence-item:focus {
+  border-color: #8eb5c8;
+  outline: none;
+}
+
+.evidence-item small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
+.evidence-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 0.84rem;
+}
+
+.evidence-badge--verified {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.evidence-badge--needsReview {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.evidence-badge--manual {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
 .checkbox-group {
   display: grid;
   gap: 12px;
@@ -458,6 +667,96 @@ input[type="file"] {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+}
+
+.log-list {
+  display: grid;
+  gap: 10px;
+}
+
+.request-log-list-card {
+  min-width: 0;
+}
+
+.request-log-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.6fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.log-list__item {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-strong);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.log-list__item:hover {
+  border-color: var(--primary);
+}
+
+.log-list__item--active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.request-log-inline-details {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+
+.request-log-inline-details h3 {
+  margin-top: 0;
+}
+
+.request-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clean-list {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.diagnosis-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.diagnosis-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-strong);
+}
+
+.text-panel,
+.code-block {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  white-space: pre-wrap;
+}
+
+.code-block {
+  overflow-x: auto;
+  font-size: 13px;
 }
 
 .spinner {
@@ -486,6 +785,20 @@ input[type="file"] {
   }
 
   .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel--form {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .request-log-row {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-row {
     grid-template-columns: 1fr;
   }
 }

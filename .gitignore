@@ -3,3 +3,18 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+
+# Local secrets and machine-specific settings
+Med Module/backend/appsettings.Development.json
+Med Module/backend/appsettings.Local.json
+Med Module/backend/.env
+Med Module/frontend/.env
+Med Module/frontend/.env.development
+Med Module/frontend/.env.local
+Med Module/frontend/.env.development.local
+
+# Build artifacts
+Med Module/backend/backend-build-check/
+Med Module/backend/backend/build-check/
+Med Module/frontend/dist/
+Med Module/frontend/node_modules/

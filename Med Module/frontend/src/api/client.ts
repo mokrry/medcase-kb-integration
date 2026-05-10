@@ -1,12 +1,73 @@
 import { logToClientConsole } from '../utils/devConsoleLogger';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5274/api').replace(/\/$/, '');
+const ACCESS_TOKEN_KEY = 'med-module.access-token';
+const APP_STORAGE_PREFIX = 'med-module.';
+
+export function getAccessToken() {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function setAccessToken(token: string) {
+  localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  window.dispatchEvent(new CustomEvent('med-module:auth-changed'));
+}
+
+export function clearAccessToken() {
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  window.dispatchEvent(new CustomEvent('med-module:auth-changed'));
+}
+
+export function clearAppStorage() {
+  const keysToRemove: string[] = [];
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(APP_STORAGE_PREFIX)) {
+      keysToRemove.push(key);
+    }
+  }
+
+  keysToRemove.forEach((key) => localStorage.removeItem(key));
+  window.dispatchEvent(new CustomEvent('med-module:auth-changed'));
+  window.dispatchEvent(new CustomEvent('med-module:reset-state'));
+}
+
+function buildHeaders(contentType?: string): HeadersInit {
+  const headers: Record<string, string> = {
+    Accept: 'application/json'
+  };
+
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
+
+  const token = getAccessToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
 
 async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAppStorage();
+      window.dispatchEvent(new CustomEvent('med-module:unauthorized'));
+    }
+
     let details = '';
     try {
-      details = await response.text();
+      const contentType = response.headers.get('content-type') ?? '';
+      if (contentType.includes('application/json')) {
+        const payload = (await response.json()) as { message?: unknown; title?: unknown; detail?: unknown };
+        details =
+          [payload.message, payload.detail, payload.title].find((value): value is string => typeof value === 'string') ??
+          '';
+      } else {
+        details = await response.text();
+      }
     } catch {
       details = '';
     }
@@ -27,9 +88,7 @@ export async function apiGet<T>(path: string): Promise<T> {
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      Accept: 'application/json'
-    }
+    headers: buildHeaders()
   });
 
   void logToClientConsole({
@@ -52,10 +111,7 @@ export async function apiPost<TRequest, TResponse>(path: string, body: TRequest)
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    },
+    headers: buildHeaders('application/json'),
     body: JSON.stringify(body)
   });
 
@@ -79,6 +135,7 @@ export async function apiPostForm<TResponse>(path: string, body: FormData): Prom
 
   const response = await fetch(url, {
     method: 'POST',
+    headers: buildHeaders(),
     body
   });
 
