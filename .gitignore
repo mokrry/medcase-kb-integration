@@ -1,23 +1,75 @@
-bin/
-obj/
-/packages/
+# IDE
+.idea/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
 riderModule.iml
 /_ReSharper.Caches/
 
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# .NET
+bin/
+obj/
+TestResults/
+*.nupkg
+*.snupkg
+/packages/
+
+# Node / Vite / TypeScript
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
 # Local secrets and machine-specific settings
+.env
+.env.*
+!.env.example
+!.env.production.example
+appsettings.Development.json
+appsettings.Local.json
+appsettings.Production.json
+
+# Project-local secrets
+Med Module/.env
+Med Module/.env.*
+!Med Module/.env.production.example
+Med Module/backend/.env
+Med Module/backend/.env.*
 Med Module/backend/appsettings.Development.json
 Med Module/backend/appsettings.Local.json
-Med Module/backend/.env
-Med Module/.env
-Med Module/.env.production
-Med Module/med-module-deploy.tar.gz
+Med Module/backend/appsettings.Production.json
 Med Module/frontend/.env
-Med Module/frontend/.env.development
-Med Module/frontend/.env.local
-Med Module/frontend/.env.development.local
+Med Module/frontend/.env.*
+!Med Module/frontend/.env.example
 
-# Build artifacts
+# Build and deployment artifacts
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+med-module-deploy.tar.gz
+Med Module/med-module-deploy.tar.gz
+backend-build-check/
+build-check/
+temp-build-check/
+backend-build-verify*/
 Med Module/backend/backend-build-check/
 Med Module/backend/backend/build-check/
-Med Module/frontend/dist/
-Med Module/frontend/node_modules/
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: med-module-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - med-module-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: med-module-backend-prod
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__AccessTokenLifetimeMinutes: ${JWT_ACCESS_TOKEN_LIFETIME_MINUTES}
+      SeedAdmin__Email: ${SEED_ADMIN_EMAIL}
+      SeedAdmin__Password: ${SEED_ADMIN_PASSWORD}
+      Excel__FilePath: Data/База_знаний_v24.5.xlsx
+      Cors__AllowedOrigins__0: https://med-module.ru
+      Cors__AllowedOrigins__1: https://www.med-module.ru
+      LlmProviders__ChatGpt__ApiKey: ${CHATGPT_PROXY_API_KEY}
+      LlmProviders__ChatGpt__Model: ${CHATGPT_MODEL}
+      LlmProviders__ChatGpt__BaseUrl: ${CHATGPT_PROXY_BASE_URL}
+      LlmProviders__Gemini__ApiKey: ${GEMINI_PROXY_API_KEY}
+      LlmProviders__Gemini__Model: ${GEMINI_MODEL}
+      LlmProviders__Gemini__BaseUrl: ${GEMINI_PROXY_BASE_URL}
+      LlmProviders__GigaChat__AuthorizationKey: ${GIGACHAT_AUTHORIZATION_KEY}
+      LlmProviders__GigaChat__Scope: ${GIGACHAT_SCOPE}
+      LlmProviders__GigaChat__Model: ${GIGACHAT_MODEL}
+      LlmProviders__GigaChat__AuthBaseUrl: ${GIGACHAT_AUTH_BASE_URL}
+      LlmProviders__GigaChat__ApiBaseUrl: ${GIGACHAT_API_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: med-module-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  med-module-postgres-data:

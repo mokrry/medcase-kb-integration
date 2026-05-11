@@ -1,174 +1,139 @@
-# MedicalFeaturePrototype
+# Med Module
 
-Учебный MVP для анализа медицинских текстов пациентов.
+Веб-приложение для интеграции медицинского текста с базой знаний интеллектуальной системы постановки диагноза.
 
-Приложение читает Excel-файл с медицинскими данными, выбирает текст пациента, сопоставляет его с наборами признаков из словарей и показывает результат в веб-интерфейсе. На текущем этапе анализ выполняется простыми rule-based правилами, без LLM.
+Пользователь вводит жалобы или фрагмент истории болезни. Система извлекает симптомы с помощью LLM, показывает подтверждающие фрагменты текста, позволяет врачу вручную скорректировать список симптомов и затем отправляет итоговый набор признаков в solver базы знаний. Результат отображается как список возможных диагнозов.
 
-## Что делает проект
+Публичный демо-стенд:
 
-Основной пользовательский сценарий:
+```text
+https://med-module.ru
+```
 
-1. backend читает Excel-файл `backend/Data/Для студента.xlsx`;
-2. загружает пациентов с листа `Сводные данные`;
-3. загружает признаки с листов:
-   - `Интересующие жалобы`
-   - `Дополнительные данные из анамне`
-4. frontend показывает список пациентов;
-5. пользователь открывает карточку пациента;
-6. выбирает, какие словари использовать;
-7. frontend отправляет запрос на анализ;
-8. backend возвращает результат по каждому признаку со статусом:
-   - `Found`
-   - `NotFound`
-   - `NeedsReview`
+## Текущий Статус
+
+Готовый MVP:
+
+- авторизация пользователей через JWT;
+- PostgreSQL для пользователей и журнала запросов;
+- извлечение симптомов через Gemini и ChatGPT;
+- подготовка медицинского текста через Gemini;
+- голосование между LLM-ответами;
+- уточнение спорных симптомов;
+- подсветка подтверждающих фрагментов текста;
+- ручное удаление и добавление симптомов из whitelist;
+- отдельная кнопка определения диагноза;
+- интеграция с удаленным solver базы знаний;
+- журнал запросов пользователя;
+- административные страницы диагностики;
+- production-деплой через Docker Compose;
+- HTTPS на `med-module.ru`;
+- автодеплой через GitHub Actions при push в `main`.
+
+## Основной Сценарий
+
+1. Пользователь входит в аккаунт.
+2. На странице `Извлечение` вводит медицинский текст.
+3. Backend отправляет текст в Gemini для нормализации.
+4. Подготовленный текст отправляется в Gemini и ChatGPT для извлечения симптомов.
+5. Программа сравнивает JSON-ответы моделей.
+6. Спорные симптомы проверяются дополнительным запросом к Gemini.
+7. Пользователь видит итоговые симптомы, статусы проверки и подтверждающие фрагменты текста.
+8. Пользователь может удалить симптом или добавить новый из whitelist.
+9. После нажатия `Узнать диагноз` backend маппит симптомы в `label/value` payload базы знаний.
+10. Payload отправляется в solver.
+11. Пользователь получает возможные диагнозы и подтверждающие признаки.
+12. Запросы сохраняются в журнале.
+
+## Архитектура
+
+```text
+frontend React/Vite
+  -> ASP.NET Core Web API
+    -> PostgreSQL
+    -> Gemini / ChatGPT / GigaChat config
+    -> Excel knowledge base file
+    -> external ai-hippocrates solver
+```
+
+Компоненты:
+
+- `frontend/` - пользовательский интерфейс на React, TypeScript, Vite.
+- `backend/` - ASP.NET Core Web API на .NET 8.
+- `backend/Data/База_знаний_v24.5.xlsx` - файл базы знаний.
+- PostgreSQL - пользователи, роли, история запросов.
+- Solver - удаленный endpoint базы знаний.
+- Docker Compose - production-запуск frontend, backend и PostgreSQL.
 
 ## Технологии
 
 Backend:
-- C#
+
 - .NET 8
 - ASP.NET Core Web API
+- Entity Framework Core
+- PostgreSQL
 - ClosedXML
+- JWT Bearer authentication
+- Swagger
 
 Frontend:
-- React
+
+- React 18
 - TypeScript
 - Vite
+- React Router
 
-## Архитектура
+Infrastructure:
 
-Проект состоит из двух частей.
+- Docker
+- Docker Compose
+- Nginx
+- Certbot / Let's Encrypt
+- GitHub Actions
 
-### Backend
+## Роли
 
-`backend/` отвечает за:
+`User`:
 
-- чтение Excel-файла;
-- хранение данных в памяти;
-- API для frontend;
-- анализ текста пациента.
+- ввод медицинского текста;
+- извлечение симптомов;
+- ручная корректировка симптомов;
+- запрос диагноза;
+- просмотр своего журнала.
 
-Основные сервисы:
+`Admin`:
 
-- `IExcelDataService` / `ExcelDataService`
-- `IPatientTextService` / `PatientTextService`
-- `IFeatureAnalysisService` / `FeatureAnalysisService`
+- все возможности пользователя;
+- страница `База знаний`;
+- страница `Интеграции`;
+- диагностика состояния backend, PostgreSQL, solver и LLM-провайдеров;
+- просмотр технических сведений без отображения API-ключей.
 
-### Frontend
-
-`frontend/` отвечает за:
-
-- загрузку списка пациентов;
-- показ деталей пациента;
-- выбор словарей признаков;
-- запуск анализа;
-- отображение итоговой таблицы результатов.
-
-## Структура проекта
+Админ создается при старте backend из настроек:
 
 ```text
-MedicalFeaturePrototype/
-  backend/
-    Controllers/
-    Data/
-    Dtos/
-    Models/
-    Services/
-      Interfaces/
-    Program.cs
-    appsettings.json
-    MedicalFeaturePrototype.Api.csproj
-
-  frontend/
-    src/
-      api/
-      components/
-      hooks/
-      pages/
-      styles/
-      types/
-      utils/
-      App.tsx
-      main.tsx
-
-  docs/
-  README.md
+SeedAdmin:Email
+SeedAdmin:Password
 ```
 
-## Источник данных
+## Локальный Запуск
 
-Excel-файл содержит три ключевых листа:
+### 1. PostgreSQL
 
-1. `Сводные данные`
-   Поля пациента:
-   - `Жалобы`
-   - `Анамнез заболевания`
-   - `ФИЗИКАЛЬНОЕ ОБСЛЕДОВАНИЕ`
+Из папки `backend`:
 
-2. `Интересующие жалобы`
-   Словарь признаков жалоб.
-
-3. `Дополнительные данные из анамне`
-   Словарь признаков анамнеза.
-
-## Логика анализа
-
-Сейчас проект **не использует LLM**.
-
-В `FeatureAnalysisService` применяется простой rule-based подход:
-
-- прямой поиск признака в тексте;
-- поиск по словарю синонимов;
-- несколько специальных правил для отдельных признаков.
-
-Примеры:
-
-- `Продуктивный кашель`:
-  - `кашель с мокротой`
-  - `продуктивный кашель`
-
-- `Одышка при физической активности`:
-  - `одышка при нагрузке`
-  - `одышка при физической нагрузке`
-
-- `Снижение сатурации`:
-  - явное упоминание `SpO2`
-  - интерпретация значения `SpO2 < 95`
-
-Такое разделение нужно сохранить, чтобы позже можно было заменить rule-based анализ на LLM без переписывания всего приложения.
-
-## API
-
-Backend предоставляет такие endpoint'ы:
-
-- `GET /api/health`  
-  Проверка работоспособности backend.
-
-- `GET /api/patients?page=1&pageSize=20`  
-  Получение списка пациентов.
-
-- `GET /api/patients/{id}`  
-  Получение деталей пациента.
-
-- `GET /api/patients/features?includeComplaintsFeatures=true&includeAnamnesisFeatures=true`  
-  Получение списка признаков из выбранных словарей.
-
-- `POST /api/patients/analyze`  
-  Запуск анализа пациента.
-
-Пример тела запроса:
-
-```json
-{
-  "patientId": 0,
-  "includeComplaintsFeatures": true,
-  "includeAnamnesisFeatures": true
-}
+```powershell
+docker compose -f docker-compose.postgres.yml up -d
 ```
 
-## Запуск проекта
+Применить миграции:
 
-### 1. Backend
+```powershell
+dotnet ef database update
+```
+
+### 2. Backend
 
 Из папки `backend`:
 
@@ -177,16 +142,20 @@ dotnet restore
 dotnet run
 ```
 
-После запуска backend доступен по адресам:
+Локальные адреса:
 
-- `http://localhost:5274`
-- `https://localhost:7274`
+```text
+http://localhost:5274
+https://localhost:7274
+```
 
-Swagger UI:
+Swagger:
 
-- `https://localhost:7274/swagger`
+```text
+https://localhost:7274/swagger
+```
 
-### 2. Frontend
+### 3. Frontend
 
 Из папки `frontend`:
 
@@ -195,36 +164,205 @@ npm install
 npm run dev
 ```
 
-По умолчанию frontend запускается на:
-
-- `http://localhost:5173`
-
-Для связи с backend используется переменная:
+Frontend:
 
 ```text
+http://localhost:5173
+```
+
+Переменная для локального frontend:
+
+```env
 VITE_API_BASE_URL=http://localhost:5274/api
 ```
 
-## Что важно для проекта
+## Конфигурация
 
-- Это MVP и учебный прототип, а не production-система.
-- Backend остаётся источником данных и бизнес-логики.
-- Frontend должен быть простым и понятным.
-- Архитектуру не нужно усложнять без необходимости.
-- На текущем этапе не нужны:
-  - база данных;
-  - Docker;
-  - авторизация;
-  - Redux / Zustand / React Query;
-  - микросервисы;
-  - LLM-интеграция.
+Локальные секреты не должны храниться в git.
 
-## Дальнейшее развитие
+Backend поддерживает настройки через:
 
-Следующие реалистичные шаги:
+- `appsettings.json`;
+- `appsettings.Development.json`;
+- .NET user-secrets;
+- environment variables в Docker.
 
-- улучшать `FeatureAnalysisService`;
-- расширять словарь синонимов и специальные правила;
-- улучшать UI страниц frontend;
-- добавлять новые backend endpoint'ы при необходимости;
-- подготовить интерфейс анализа к будущей замене на LLM.
+Шаблоны:
+
+- `backend/appsettings.example.json`
+- `frontend/.env.example`
+- `.env.production.example`
+
+Основные production-переменные:
+
+```env
+POSTGRES_DB=med_module
+POSTGRES_USER=med_module_user
+POSTGRES_PASSWORD=...
+
+JWT_ISSUER=MedicalFeaturePrototype
+JWT_AUDIENCE=MedicalFeaturePrototype
+JWT_SECRET=...
+JWT_ACCESS_TOKEN_LIFETIME_MINUTES=120
+
+SEED_ADMIN_EMAIL=admin@med-module.ru
+SEED_ADMIN_PASSWORD=...
+
+CHATGPT_PROXY_API_KEY=...
+CHATGPT_MODEL=gpt-5.4-mini
+CHATGPT_PROXY_BASE_URL=https://api.proxyapi.ru/openai
+
+GEMINI_PROXY_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_PROXY_BASE_URL=https://api.proxyapi.ru/google
+```
+
+GigaChat можно оставить не настроенным, если он временно не участвует в голосовании:
+
+```env
+GIGACHAT_AUTHORIZATION_KEY=
+```
+
+## Production-Деплой
+
+Production-схема:
+
+```text
+Internet
+  -> Nginx host 80/443
+    -> 127.0.0.1:8080
+      -> frontend container nginx
+        -> /api proxy to backend container
+          -> postgres container
+```
+
+Основные файлы:
+
+- `docker-compose.prod.yml`
+- `backend/Dockerfile`
+- `frontend/Dockerfile`
+- `frontend/nginx.conf`
+- `.env.production.example`
+- `DEPLOY.md`
+
+Запуск на сервере:
+
+```bash
+cd /opt/med-module
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+Проверка:
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env ps
+curl -I http://127.0.0.1:8080
+curl -I https://med-module.ru
+```
+
+## Автодеплой Через GitHub Actions
+
+Workflow:
+
+```text
+.github/workflows/deploy-production.yml
+```
+
+При push в `main`:
+
+1. GitHub Actions собирает архив проекта.
+2. Загружает архив на VPS по SSH.
+3. Обновляет `/opt/med-module`.
+4. Сохраняет существующий `/opt/med-module/.env`.
+5. Выполняет `docker compose up -d --build`.
+
+Нужные GitHub Secrets:
+
+```text
+VPS_HOST=130.12.47.15
+VPS_USER=root
+VPS_PORT=22
+VPS_SSH_KEY=<private SSH key>
+```
+
+Проверка деплоя:
+
+```text
+GitHub -> repository -> Actions -> Deploy production
+```
+
+На сервере:
+
+```bash
+cd /opt/med-module
+docker compose -f docker-compose.prod.yml --env-file .env ps
+```
+
+Если `backend` и `frontend` имеют свежий `Up`, новая версия применена.
+
+## API
+
+Основные группы endpoint'ов:
+
+- `/api/auth/*` - регистрация, вход, текущий пользователь.
+- `/api/prompt/*` - извлечение симптомов и запрос диагноза.
+- `/api/requests/*` - журнал запросов.
+- `/api/admin/*` - административная диагностика.
+- `/api/patients/*` - legacy endpoints для раннего этапа проекта.
+
+Swagger доступен в development-сценарии:
+
+```text
+https://localhost:7274/swagger
+```
+
+## Безопасность
+
+Не коммитить:
+
+- `.env`;
+- `.env.*`, кроме `.env.example` и `.env.production.example`;
+- `appsettings.Development.json`;
+- API-ключи;
+- пароли;
+- deployment-архивы;
+- `bin/`, `obj/`, `dist/`, `node_modules/`.
+
+Если ключ был показан в чате, скриншоте или терминале, его лучше перевыпустить.
+
+## Полезные Команды
+
+Логи production:
+
+```bash
+cd /opt/med-module
+docker compose -f docker-compose.prod.yml --env-file .env logs -f
+```
+
+Перезапуск:
+
+```bash
+cd /opt/med-module
+docker compose -f docker-compose.prod.yml --env-file .env restart
+```
+
+Обновление после ручной загрузки файлов:
+
+```bash
+cd /opt/med-module
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+Проверка HTTPS-автопродления:
+
+```bash
+certbot renew --dry-run
+```
+
+## Ограничения MVP
+
+- Solver используется как внешний сервис, локальный solver не реализован.
+- Качество извлечения симптомов зависит от LLM и prompt engineering.
+- GigaChat может быть настроен, но временно не обязан участвовать в голосовании.
+- Интерфейс администрирования диагностический: редактирование базы знаний через UI не предусмотрено.
+- Для production-сценария секреты хранятся на сервере в `/opt/med-module/.env`.

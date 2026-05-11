@@ -1,0 +1,72 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "Med Module/**"
+      - ".github/workflows/deploy-production.yml"
+      - ".github/scripts/deploy-production.sh"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create deployment archive
+        run: |
+          tar \
+            --exclude="frontend/node_modules" \
+            --exclude="frontend/dist" \
+            --exclude="backend/bin" \
+            --exclude="backend/obj" \
+            --exclude="backend/backend-build-check" \
+            --exclude="med-module-deploy.tar.gz" \
+            -czf med-module-deploy.tar.gz \
+            -C "Med Module" \
+            backend frontend docker-compose.prod.yml .env.production.example DEPLOY.md
+
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$VPS_HOST"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/med_module_deploy_key
+          chmod 600 ~/.ssh/med_module_deploy_key
+          ssh-keyscan -p "${VPS_PORT:-22}" "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload archive
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          scp \
+            -i ~/.ssh/med_module_deploy_key \
+            -P "${VPS_PORT:-22}" \
+            med-module-deploy.tar.gz \
+            "${VPS_USER:-root}@${VPS_HOST}:/tmp/med-module-deploy.tar.gz"
+
+      - name: Deploy on server
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          ssh \
+            -i ~/.ssh/med_module_deploy_key \
+            -p "${VPS_PORT:-22}" \
+            "${VPS_USER:-root}@${VPS_HOST}" \
+            'bash -s' < .github/scripts/deploy-production.sh

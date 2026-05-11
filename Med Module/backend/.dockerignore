@@ -1,0 +1,10 @@
+bin/
+obj/
+backend-build-check/
+.vs/
+.idea/
+*.user
+*.suo
+appsettings.Development.json
+appsettings.Local.json
+.env
