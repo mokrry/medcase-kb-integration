@@ -1,14 +1,39 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import { getCurrentUser } from '../../api/authApi';
 import { getAccessToken } from '../../api/client';
+import type { UserProfile } from '../../types/auth';
 
 export function Header() {
-  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAccessToken()));
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const isAuthenticated = Boolean(getAccessToken());
+  const isAdmin = currentUser?.role === 'Admin';
 
   useEffect(() => {
-    function syncAuthState() {
-      setIsAuthenticated(Boolean(getAccessToken()));
+    let requestVersion = 0;
+
+    async function syncAuthState() {
+      requestVersion += 1;
+      const version = requestVersion;
+
+      if (!getAccessToken()) {
+        setCurrentUser(null);
+        return;
+      }
+
+      try {
+        const user = await getCurrentUser();
+        if (version === requestVersion) {
+          setCurrentUser(user);
+        }
+      } catch {
+        if (version === requestVersion) {
+          setCurrentUser(null);
+        }
+      }
     }
+
+    void syncAuthState();
 
     window.addEventListener('med-module:auth-changed', syncAuthState);
     window.addEventListener('med-module:unauthorized', syncAuthState);
@@ -42,6 +67,16 @@ export function Header() {
               </NavLink>
               <NavLink to="/requests" className="nav__link">
                 Журнал
+              </NavLink>
+            </>
+          )}
+          {isAdmin && (
+            <>
+              <NavLink to="/knowledge-base" className="nav__link">
+                База знаний
+              </NavLink>
+              <NavLink to="/integrations" className="nav__link">
+                Интеграции
               </NavLink>
             </>
           )}

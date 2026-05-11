@@ -8,6 +8,9 @@ riderModule.iml
 Med Module/backend/appsettings.Development.json
 Med Module/backend/appsettings.Local.json
 Med Module/backend/.env
+Med Module/.env
+Med Module/.env.production
+Med Module/med-module-deploy.tar.gz
 Med Module/frontend/.env
 Med Module/frontend/.env.development
 Med Module/frontend/.env.local

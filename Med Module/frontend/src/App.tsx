@@ -1,11 +1,14 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useEffect } from 'react';
+import { RequireAdmin } from './components/Auth/RequireAdmin';
 import { RequireAuth } from './components/Auth/RequireAuth';
 import { AppLayout } from './components/Layout/AppLayout';
 import { AppStateProvider } from './context/AppStateContext';
 import { AuthPage } from './pages/AuthPage';
 import { ExtractionPage } from './pages/ExtractionPage';
 import { HomePage } from './pages/HomePage';
+import { IntegrationsAdminPage } from './pages/IntegrationsAdminPage';
+import { KnowledgeBaseAdminPage } from './pages/KnowledgeBaseAdminPage';
 import { RequestLogPage } from './pages/RequestLogPage';
 
 export default function App() {
@@ -46,6 +49,22 @@ export default function App() {
                 <RequireAuth>
                   <RequestLogPage />
                 </RequireAuth>
+              }
+            />
+            <Route
+              path="/knowledge-base"
+              element={
+                <RequireAdmin>
+                  <KnowledgeBaseAdminPage />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/integrations"
+              element={
+                <RequireAdmin>
+                  <IntegrationsAdminPage />
+                </RequireAdmin>
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />

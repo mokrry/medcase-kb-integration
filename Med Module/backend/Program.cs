@@ -14,6 +14,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<SeedAdminOptions>(builder.Configuration.GetSection("SeedAdmin"));
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -75,6 +76,7 @@ builder.Services.AddScoped<IPromptVotingService, PromptVotingService>();
 builder.Services.AddScoped<IMedicalTextWorkflowService, MedicalTextWorkflowService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProcessingRequestLogService, ProcessingRequestLogService>();
+builder.Services.AddScoped<AdminBootstrapService>();
 
 builder.Services.Configure<ChatGptOptions>(builder.Configuration.GetSection("LlmProviders:ChatGpt"));
 builder.Services.Configure<GeminiOptions>(builder.Configuration.GetSection("LlmProviders:Gemini"));
@@ -87,6 +89,15 @@ builder.Services.AddHttpClient<IGigaChatApiService, GigaChatApiService>();
 builder.Services.AddHttpClient<IKnowledgeBaseSolverService, KnowledgeBaseSolverService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
+
+    var adminBootstrapService = scope.ServiceProvider.GetRequiredService<AdminBootstrapService>();
+    await adminBootstrapService.SeedAsync();
+}
 
 app.UseSwagger();
 app.UseSwaggerUI();
